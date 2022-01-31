@@ -19,8 +19,8 @@ dst_ip2 = []
 
 def sip_pkts_and_integrity(capture, capture2):
 
-    """ Counts the number of SIP packets before and after 
-        Anonymization and tests for integrity """
+    """ Counts and compares the number of SIP packets before and after 
+        Anonymization and tests for integrity using Call-ID """
 
     print("Counting SIP packets...\n")
     sip_pkts = 0
@@ -72,7 +72,7 @@ def sip_pkts_and_integrity(capture, capture2):
 
 def ip_mapping(capture, capture2):
 
-    """ Maps the IP adresses before and after Anonymization"""
+    """ Maps unique IP adresses before and after Anonymization """
     
     print("IP mapping...\n")
     for (packet, packet2) in itertools.zip_longest(capture, capture2):
