@@ -17,6 +17,8 @@ dst_ip = []
 src_ip2 = []
 dst_ip2 = []
 
+mac_addrs = {"MAC": [], "MAC2":[]}
+
 def sip_pkts_and_integrity(capture, capture2):
 
     """ Counts and compares the number of SIP packets before and after 
@@ -25,6 +27,7 @@ def sip_pkts_and_integrity(capture, capture2):
     print("Counting SIP packets...\n")
     sip_pkts = 0
     sip_pkts2 = 0
+    mac_anonymized = True
     global start 
     start = time.time()
     for packet, packet2 in itertools.zip_longest(capture, capture2):
@@ -48,6 +51,12 @@ def sip_pkts_and_integrity(capture, capture2):
                     if field_name2 == "sip.Call-ID":
                         if field_value2 not in call_ID2:
                             call_ID2.append(field_value2)
+
+            if hasattr(packet, 'sip') and hasattr(packet2, 'sip'):
+                mac = packet.eth.src
+                mac2 = packet2.eth.src
+                if mac == mac2:
+                    mac_anonymized = False
         except OSError:
             pass
         except asyncio.TimeoutError:
@@ -59,6 +68,11 @@ def sip_pkts_and_integrity(capture, capture2):
     print("SIP packets before Anonymization: {} \nSIP packets after Anonymization: {}\n".format(sip_pkts, sip_pkts2))
     print("Checking for integrity...\n")
 
+    if mac_anonymized:
+        print("MAC Addresses Anonymized.")
+    else:
+        print("MAC Addresses not Anonymized.")
+
     if (sip_pkts == sip_pkts2) and (len(call_ID) == len(call_ID2)):
         print("Call-ID integrity maintained.\nNo SIP packet loss.\n")
     elif sip_pkts != sip_pkts2:
@@ -69,6 +83,32 @@ def sip_pkts_and_integrity(capture, capture2):
         print("SIP packets compromised after Anonymization.\n")
     #print(tabulate(call_ID, headers=["Call-ID"], tablefmt='orgtbl'))
 
+def check_fields(capture, capture2):
+
+    """ Checks if sensitive information is anonymized """
+
+    print("Checking if sensitive information is anonymized...")
+    mac_anonymized = True
+    p = 0
+    for (packet, packet2) in itertools.zip_longest(capture, capture2):
+        try:
+            if hasattr(packet, 'sip') and hasattr(packet2, 'sip'):
+                p += 1
+                mac = packet.eth.src
+                mac2 = packet2.eth.src
+                if mac == mac2:
+                    mac_anonymized = False
+                print("MAC: {} and MAC2: {} Pkts: {}".format(mac, mac2, p))
+
+        except OSError:
+            pass
+        except asyncio.TimeoutError:
+            pass
+
+    if mac_anonymized:
+        print("MAC Addresses Anonymized.")
+    else:
+        print("MAC Addresses not Anonymized.")
 
 def ip_mapping(capture, capture2):
 
@@ -131,6 +171,7 @@ if __name__ == '__main__':
     cap = pyshark.FileCapture(pcap_file)
     cap2 = pyshark.FileCapture(pcap_file2)
     sip_pkts_and_integrity(cap, cap2)
+    #check_fields(cap, cap2)
     ip_mapping(cap, cap2)
     cap.close()
     cap2.close()
