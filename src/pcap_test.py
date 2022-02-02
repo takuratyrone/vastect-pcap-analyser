@@ -26,6 +26,8 @@ def sip_pkts_and_integrity(capture, capture2):
     print("Counting SIP packets...\n")
     sip_pkts = 0
     sip_pkts2 = 0
+    mac_anonymized = True
+    sensitive_info_anon = True
     start = time.time()
     for packet, packet2 in itertools.zip_longest(capture, capture2):
         try:
@@ -50,6 +52,19 @@ def sip_pkts_and_integrity(capture, capture2):
                         call_ID2.sort()
                         if bisect_left(call_ID2, field_value2)!=bisect(call_ID2, field_value2):
                             call_ID2.append(field_value2)
+
+            if hasattr(packet, 'sip') and hasattr(packet2, 'sip'):
+                """ Checking if MAC addr and Sensitive Information in the Message Header and Message Body is Anonymized """
+                mac = packet.eth.src
+                mac2 = packet2.eth.src
+                if mac == mac2:
+                    mac_anonymized = False
+                if packet.sip.Via == packet2.sip.Via:
+                    sensitive_info_anon = False
+                if packet.sip.From == packet2.sip.From:
+                    sensitive_info_anon = False
+                if packet.sip.To == packet2.sip.To:
+                    sensitive_info_anon = False
         except OSError:
             pass
         except asyncio.TimeoutError:
@@ -60,6 +75,16 @@ def sip_pkts_and_integrity(capture, capture2):
     print("Runtime: {} secs.".format(end-start))
     print("SIP packets before Anonymization: {} \nSIP packets after Anonymization: {}\n".format(sip_pkts, sip_pkts2))
     print("Checking for integrity...\n")
+
+    if mac_anonymized:
+        print("MAC Addresses Anonymized.")
+    else:
+        print("MAC Addresses NOT Anonymized.")
+
+    if sensitive_info_anon:
+        print("Sensitive Information under Message Header and Message Body Anonymized.")
+    else:
+        print("Sensitive Information under Message Header and Message Body NOT Anonymized.")
 
     if (sip_pkts == sip_pkts2) and (len(call_ID) == len(call_ID2)):
         print("Call-ID integrity maintained.\nNo SIP packet loss.\n")

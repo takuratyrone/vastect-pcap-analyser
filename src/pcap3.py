@@ -38,11 +38,13 @@ def sip_pkts_and_integrity(capture, capture2):
                 sip_pkts += 1
                 field_names = packet.sip._all_fields
                 field_values = packet.sip._all_fields.values()
-
+                print(field_names)
                 for field_name, field_value in zip(field_names, field_values):
                     if field_name == "sip.Call-ID":
                         if field_value not in call_ID:
                             call_ID.append(field_value)
+                    if field_name == "sdp.owner.username":
+                        print('yessssss')
                 
             if hasattr(packet2, 'sip'):
                 """ Counting SIP packets and Collecting Unique Call-IDs in Anonymized pcap file """
@@ -67,10 +69,11 @@ def sip_pkts_and_integrity(capture, capture2):
                     sensitive_info_anon = False
                 if packet.sip.To == packet2.sip.To:
                     sensitive_info_anon = False
+                
 
             if hasattr(packet, 'sdp') and hasattr(packet2, 'sdp'):
                 print("SDP read!!!")
-                if packet.sdp.owner == packet2.sdp.owner:
+                if packet.sip.owner == packet2.sip.owner:
                     sensitive_info_anon = False
                 
                 
