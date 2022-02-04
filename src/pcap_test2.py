@@ -69,13 +69,14 @@ def sip_pkts_and_integrity(capture, capture2):
                                                      time_stamp: [[tag, mac, via, from_, to]]
                                 }
                             else:
-                                #print(field_value)
+                                #print(from_)
                                 org_file_temp = {
                                                 time_stamp: [[tag, field_value, src_addr, dst_addr]]
                                 }
                                 org_sens_info_temp = {
                                                      time_stamp: [[tag, mac, via, from_, to]]
                                 }
+                            print(from_)  
                             org_file.update(org_file_temp)
                             org_sens_info.update(org_sens_info_temp)
 
