@@ -51,15 +51,31 @@ def sip_pkts_and_integrity(capture, capture2):
                 for field_name, field_value in zip(field_names, field_values):
                     if field_name == "sip.Call-ID":
                         if time_stamp in org_file:
-                            org_file[time_stamp].append([tag, field_value, src_addr, dst_addr])
-                            org_sens_info[time_stamp].append([tag, mac, via, from_, to])
+                            if "@" in field_value:
+                                pos = field_value.split("@")
+                                org_file[time_stamp].append([tag, pos[0], src_addr, dst_addr])
+                                org_sens_info[time_stamp].append([tag, mac, via, from_, to])
+                            else:
+                                org_file[time_stamp].append([tag, field_value, src_addr, dst_addr])
+                                org_sens_info[time_stamp].append([tag, mac, via, from_, to])
                         else:
-                            org_file_temp = {
-                                            time_stamp: [[tag, field_value, src_addr, dst_addr]]
-                            }
-                            org_sens_info_temp = {
-                                                 time_stamp: [[tag, mac, via, from_, to]]
-                            }
+                            if "@" in field_value:
+                                pos = field_value.split("@")
+                                #print(pos[0])
+                                org_file_temp = {
+                                            time_stamp: [[tag, pos[0], src_addr, dst_addr]]
+                                }
+                                org_sens_info_temp = {
+                                                     time_stamp: [[tag, mac, via, from_, to]]
+                                }
+                            else:
+                                #print(field_value)
+                                org_file_temp = {
+                                                time_stamp: [[tag, field_value, src_addr, dst_addr]]
+                                }
+                                org_sens_info_temp = {
+                                                     time_stamp: [[tag, mac, via, from_, to]]
+                                }
                             org_file.update(org_file_temp)
                             org_sens_info.update(org_sens_info_temp)
 
@@ -85,23 +101,41 @@ def sip_pkts_and_integrity(capture, capture2):
                 for field_name2, field_value2 in zip(field_names2, field_values2):
                     if field_name2 == "sip.Call-ID":
                         if time_stamp2 in anon_file:
-                            anon_file[time_stamp2].append([tag2, field_value2, src_addr2, dst_addr2])
-                            anon_info[time_stamp2].append([tag2, mac2, via2, from_2, to2])
+                            if "@" in field_value2:
+                                pos2 = field_value2.split("@")
+                                anon_file[time_stamp2].append([tag2, pos2[0], src_addr2, dst_addr2])
+                                anon_info[time_stamp2].append([tag2, mac2, via2, from_2, to2])
+                            else:
+                                anon_file[time_stamp2].append([tag2, field_value2, src_addr2, dst_addr2])
+                                anon_info[time_stamp2].append([tag2, mac2, via2, from_2, to2])
                         else:
-                            anon_file_temp = {
+                            if "@" in field_value2:
+                                pos2 = field_value2.split("@")
+                                anon_file_temp = {
+                                                time_stamp2: [[tag2, pos2[0], src_addr2, dst_addr2]]
+                                                }
+                                anon_info_temp = {
+                                                     time_stamp2: [[tag2, mac2, via2, from_2, to2]]
+                                }
+                            else:
+                                anon_file_temp = {
                                             time_stamp2: [[tag2, field_value2, src_addr2, dst_addr2]]
                                             }
                             anon_info_temp = {
                                                  time_stamp2: [[tag2, mac2, via2, from_2, to2]]
                             }
                             anon_file.update(anon_file_temp) 
-                            anon_info.update(anon_info_temp)            
+                            anon_info.update(anon_info_temp)  
+                    if field_name2 == "sdp.owner.username":
+                        pass          
         except OSError:
             pass
         except asyncio.TimeoutError:
             pass
     #print(anon_file)
     print("SIP packets before Anonymization: {} \nSIP packets after Anonymization: {}\n".format(sip_pkts, sip_pkts2))
+    
+    # If no SIP packet loss, analysis continues
     if sip_pkts == sip_pkts2:
         check_fields()
         ip_mapping()
@@ -126,7 +160,7 @@ def check_fields():
                         if (org_sens_info[key][i][j] == anon_info[key][i][j]):
                             sensitive_info_anon = False
         
-        if (key in anon_file) and (anon_file[key][0][0] == org_file[key][0][0]):
+        if (key in anon_info) and (anon_info[key][0][0] == org_sens_info[key][0][0]):
             if (org_sens_info[key][0][1] == anon_info[key][0][1]):
                 mac_anonymized = False
             for k in range(2, 5):
@@ -153,7 +187,7 @@ def ip_mapping():
         ip_map_temp = {}
         if len(org_file[key]) > 1:
             for i in range(len(org_file[key])):
-                if (key in anon_file) and (anon_file[key][i][0] == org_file[key][i][0]):
+                if (key in anon_file) and (anon_file[key][i][1] == org_file[key][i][1]):
                     if ((org_file[key][i][2] in ip_map) or (org_file[key][i][3] in ip_map)):
                         if (ip_map[org_file[key][i][2]] != anon_file[key][i][2]) or (ip_map[org_file[key][i][3]] != anon_file[key][i][3]):
                             ip_credible = False
@@ -161,16 +195,31 @@ def ip_mapping():
                         ip_map_temp = {org_file[key][i][2]: anon_file[key][i][2], org_file[key][i][3]: anon_file[key][i][3]}
                         ip_map.update(ip_map_temp)
         #print("{}   {}".format(org_file[key][0][0], anon_file[key][0][0]))
-        if (key in anon_file) and (anon_file[key][0][0] == org_file[key][0][0]):
-            if ((org_file[key][0][2] in ip_map) or (org_file[key][0][3] in ip_map)):
+        if (key in anon_file) and (anon_file[key][0][1] == org_file[key][0][1]):
+            # Checks if both src and dst IP are in ip_map and verifies if mapping is consistent
+            if ((org_file[key][0][2] in ip_map) and (org_file[key][0][3] in ip_map)):
                 if (ip_map[org_file[key][0][2]] != anon_file[key][0][2]) or (ip_map[org_file[key][0][3]] != anon_file[key][0][3]):
                     ip_credible = False
+
+            # Checks if src IP is in ip_map, verifies consistency and adds dst IP in ip_map_temp
+            elif ((org_file[key][0][2] in ip_map) and (org_file[key][0][3] not in ip_map)):
+                if (ip_map[org_file[key][0][2]] != anon_file[key][0][2]):
+                    ip_credible = False
+                ip_map_temp = {org_file[key][0][3]: anon_file[key][0][3]}
+
+            # Checks if dst IP is in ip_map, verifies consistency and adds src IP in ip_map_temp
+            elif ((org_file[key][0][2] not in ip_map) and (org_file[key][0][3] in ip_map)):
+                if (ip_map[org_file[key][0][3]] != anon_file[key][0][3]):
+                    ip_credible = False
+                ip_map_temp = {org_file[key][0][2]: anon_file[key][0][2]}
+
             else:
                 ip_map_temp = {org_file[key][0][2]: anon_file[key][0][2], org_file[key][0][3]: anon_file[key][0][3]}
-                ip_map.update(ip_map_temp)
+            ip_map.update(ip_map_temp)
             #print("{}   {}".format(org_file[key],anon_file[key]))
     if ip_credible:
-        print("There are {} unique IP addresses.\n".format(len(ip_map)))
+        print("There are {} unique original IP addresses.".format(len(ip_map)))
+        print("There are {} unique generated IP addresses.\n".format(len(set(ip_map.values()))))
         print("|{:>20} | {:>20} |".format("Original IP", "Anon IP"))
         print("|{:>20} | {:>20} |".format("_"*20, "_"*20))
         for ip in ip_map:        
