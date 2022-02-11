@@ -25,5 +25,5 @@ pip install libxml
 ## Usage
 
 ```bash
-python src/pcap3.py pcap_files/original-file.pcap anon_files/anonymized-file.pcap 
+python src/pcap_analysis.py pcap_files/original-file.pcap anon_files/anonymized-file.pcap 
 ```
